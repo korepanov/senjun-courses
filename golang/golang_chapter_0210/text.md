@@ -177,3 +177,138 @@ scanner.Split(bufio.ScanRunes)   // По рунам
 scanner.Split(bufio.ScanBytes)   // Побайтово
 ```
 
+Иногда встроенных функций не хватает. В этом случае приходится написать собственную. Сигнатура для функции `split` такая: 
+
+```go
+func(data []byte, atEOF bool) (advance int, token []byte, err error)
+```
+
+Параметры:
+* `data` — непрочитанные данные в буфере.
+* `atEOF` — `true`, если это последний кусок данных — достигнут конец файла.
+
+Возвращаемые значения:
+* `advance` — на сколько байт продвинуться в буфере. 
+* `token` — найденный токен — то, что вернёт `scanner.Text`.
+* `err` — ошибка.
+
+Рассмотрим, как считать файл по частям, разделенным символом запятой.
+
+```go
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"log"
+	"os"
+)
+
+func main() {
+	file, err := os.Open("input.txt")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		err = file.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
+	scanner := bufio.NewScanner(file)
+	scanner.Split(ScanComma)
+	for scanner.Scan() {
+		line := scanner.Text()
+		fmt.Println(line)
+	}
+	if err := scanner.Err(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func ScanComma(data []byte, atEOF bool) (advance int, token []byte, err error) {
+	for i := 0; i < len(data); i++ {
+		if data[i] == ',' {
+			// Нашли запятую, возвращаем токен до неё
+			return i + 1, data[:i], nil
+		}
+	}
+	if atEOF && len(data) == 0 {
+		// Возвращаем последний токен
+		return 0, nil, nil
+	}
+
+	return len(data), data, nil
+}
+```
+
+`input.txt`:
+```
+apple,banana,orange,grape 
+```
+
+Результат: 
+```
+apple
+banana
+orange
+grape 
+```
+
+Необходимо  В файле `input.cpp` находится фрагмент кода на языке C++. {.task_text}
+
+
+```go {.task_answer}
+package main
+
+import (
+	"bufio"
+	"bytes"
+	"fmt"
+	"log"
+	"os"
+)
+
+func main() {
+	file, err := os.Open("input.cpp")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		err = file.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
+	scanner := bufio.NewScanner(file)
+	scanner.Split(ScanInstruction)
+	for scanner.Scan() {
+		line := scanner.Text()
+		fmt.Println(line)
+	}
+	if err := scanner.Err(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func ScanInstruction(data []byte, atEOF bool) (advance int, token []byte, err error) {
+	if len(data) == 0 {
+		return 0, nil, nil
+	}
+	inQuote := false // внутри кавычек
+	for i := 0; i < len(data); i++ {
+		if data[i] == '"' {
+			// Переключаем состояние кавычек
+			inQuote = !inQuote
+		} else if !inQuote && data[i] == ';' {
+			// Нашли точку с запятой вне кавычек
+			return i + 1, bytes.TrimSpace(data[:i]), nil
+		}
+	}
+	if atEOF && len(data) == 0 {
+		// Возвращаем последний токен
+		return 0, nil, nil
+	}
+	return len(data), data, nil
+}
+```
