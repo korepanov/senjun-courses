@@ -16,52 +16,6 @@
 
 ### Чтение файла 
 
-Чтобы открыть файл и прочесть часть фиксированного размера, используют `os.Open` и `Read`: 
-
-```go
-package main
-
-import (
-	"fmt"
-	"log"
-	"os"
-)
-
-func main() {
-	file, err := os.Open(".log")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer func() {
-		// обязательно закрыть!
-		err = file.Close()
-		if err != nil {
-			log.Fatal(err)
-		}
-	}()
-	buf := make([]byte, 4096) // 4KB буфер
-	n, err := file.Read(buf)
-	if err != nil {
-		log.Fatal(err)
-	}
-	if n > 0 {
-		fmt.Print(string(buf[:n]))
-	}
-}
-```
-
-Если размер файла меньше 4KB, то мы получим все содержимое файла. Пример результата: 
-
-```
-[2026-06-11 10:15:23] Server started
-[2026-06-11 10:15:23] User admin logged in
-[2026-06-11 10:15:23] Request processed /api/users
-[2026-06-11 10:15:23] Server stopped
-```
-
-**Всегда закрывайте за собой файл!**   
-В противном случае возникнет утечка памяти.
-
 Когда файл небольшой, его читают целиком: 
 
 ```go
@@ -111,4 +65,55 @@ func main() {
 }
 ```
 
-Здесь возникает вопрос. Как читать большие файлы? Если файл не поместится в память целиком, то мы не сможем прочесть его через `os.ReadFile`. Следовательно, нужно читать файл по частям. 
+Однако представьте себе ситуацию, что файл большой, а памяти мало. Как быть, когда файл не помещается в память целиком? В этом случае его читают по частям:
+
+```go
+package main
+
+import (
+	"fmt"
+	"io"
+	"log"
+	"os"
+)
+
+func main() {
+	file, err := os.Open(".log")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		// обязательно закрыть!
+		err = file.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
+	buf := make([]byte, 128) // 128B буфер
+	for {
+		n, err := file.Read(buf)
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Fatal(err)
+		}
+		if n > 0 {
+			fmt.Print(string(buf[:n]))
+		}
+	}
+}
+```
+
+Если размер файла меньше 4KB, то мы получим все содержимое файла. Пример результата: 
+
+```
+[2026-06-11 10:15:23] Server started
+[2026-06-11 10:15:23] User admin logged in
+[2026-06-11 10:15:23] Request processed /api/users
+[2026-06-11 10:15:23] Server stopped
+```
+
+**Всегда закрывайте за собой файл!**   
+В противном случае возникнет утечка памяти.
+
