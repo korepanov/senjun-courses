@@ -3,6 +3,7 @@
 - [ ] Работа с json и xml   
 - [ ] работа с файлами  
 - [ ] логирование  
+- [ ] Задача на кастомный Split до точки с запятой
 
 ## Работа с файлами
 
@@ -78,12 +79,13 @@ import (
 )
 
 func main() {
+	// Открываем файл на чтение
 	file, err := os.Open(".log")
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer func() {
-		// обязательно закрыть!
+		// Обязательно закрыть!
 		err = file.Close()
 		if err != nil {
 			log.Fatal(err)
@@ -91,7 +93,10 @@ func main() {
 	}()
 	buf := make([]byte, 128) // 128B буфер
 	for {
+		// Читаем в буфер
 		n, err := file.Read(buf)
+		// Получим ошибку io.EOF,
+		// когда дойдем до конца файла
 		if err == io.EOF {
 			break
 		}
@@ -105,7 +110,7 @@ func main() {
 }
 ```
 
-Если размер файла меньше 4KB, то мы получим все содержимое файла. Пример результата: 
+Результат — содержимое файла. Пример результата: 
 
 ```
 [2026-06-11 10:15:23] Server started
@@ -116,4 +121,59 @@ func main() {
 
 **Всегда закрывайте за собой файл!**   
 В противном случае возникнет утечка памяти.
+
+Когда нужно прочесть файл построчно, используют пакет `bufio`:
+
+```go 
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"log"
+	"os"
+)
+
+func main() {
+	file, err := os.Open(".log")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer func() {
+		err = file.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
+	scanner := bufio.NewScanner(file)
+	// Читаем построчно.
+	// В случае ошибки вернутся false.
+	for scanner.Scan() {
+		line := scanner.Text()
+		fmt.Println(line)
+	}
+	// В случае конца файла ошибка равно nil.
+	if err := scanner.Err(); err != nil {
+		log.Fatal(err)
+	}
+}
+```
+Пример результата: 
+
+```
+[2026-06-11 10:15:23] Server started
+[2026-06-11 10:15:23] User admin logged in
+[2026-06-11 10:15:23] Request processed /api/users
+[2026-06-11 10:15:23] Server stopped
+```
+
+По умолчанию `bufio.NewScanner` возвращает значение типа `*bufio.Scanner`, для которого определена функция `split`. Она-то и отвечает за то, что мы читаем файл построчно. В `bufio` существует несколько встроенных функций, которые задают в качестве `split`, когда хотят получить другое поведение. Делают это с помощью метода `Split`:
+
+```go
+// Встроенные функции разделения в пакете bufio:
+scanner.Split(bufio.ScanLines)   // По строкам — по умолчанию
+scanner.Split(bufio.ScanWords)   // По словам
+scanner.Split(bufio.ScanRunes)   // По рунам
+scanner.Split(bufio.ScanBytes)   // Побайтово
+```
 
