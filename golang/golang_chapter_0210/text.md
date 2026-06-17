@@ -255,7 +255,7 @@ orange
 grape 
 ```
 
-Необходимо  В файле `input.cpp` находится фрагмент кода на языке C++. {.task_text}
+Необходимо  В файле `input.txt` находится фрагмент кода на языке C++. {.task_text}
 
 
 ```go {.task_answer}
@@ -270,7 +270,7 @@ import (
 )
 
 func main() {
-	file, err := os.Open("input.cpp")
+	file, err := os.Open("input.txt")
 	if err != nil {
 		log.Fatal(err)
 	}
