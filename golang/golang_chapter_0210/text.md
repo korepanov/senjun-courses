@@ -255,7 +255,7 @@ orange
 grape 
 ```
 
-Необходимо  В файле `input.txt` находится фрагмент кода на языке C++. {.task_text}
+В файле `input.txt` находится фрагмент кода на языке C++. {.task_text}
 
 
 ```go {.task_answer}
@@ -263,7 +263,6 @@ package main
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"log"
 	"os"
@@ -284,7 +283,7 @@ func main() {
 	scanner.Split(ScanInstruction)
 	for scanner.Scan() {
 		line := scanner.Text()
-		fmt.Println(line)
+		fmt.Print(line)
 	}
 	if err := scanner.Err(); err != nil {
 		log.Fatal(err)
@@ -292,7 +291,8 @@ func main() {
 }
 
 func ScanInstruction(data []byte, atEOF bool) (advance int, token []byte, err error) {
-	if len(data) == 0 {
+	if atEOF && len(data) == 0 {
+		// Возвращаем последний токен
 		return 0, nil, nil
 	}
 	inQuote := false // внутри кавычек
@@ -302,12 +302,8 @@ func ScanInstruction(data []byte, atEOF bool) (advance int, token []byte, err er
 			inQuote = !inQuote
 		} else if !inQuote && data[i] == ';' {
 			// Нашли точку с запятой вне кавычек
-			return i + 1, bytes.TrimSpace(data[:i]), nil
+			return i + 1, data[:i], nil
 		}
-	}
-	if atEOF && len(data) == 0 {
-		// Возвращаем последний токен
-		return 0, nil, nil
 	}
 	return len(data), data, nil
 }
