@@ -226,7 +226,8 @@ func main() {
 	}
 }
 
-func ScanComma(data []byte, atEOF bool) (advance int, token []byte, err error) {
+func ScanComma(data []byte, atEOF bool) (advance int,
+	token []byte, err error) {
 	if atEOF && len(data) == 0 {
 		// Возвращаем последний токен
 		return 0, nil, nil
@@ -254,7 +255,7 @@ orange
 grape 
 ```
 
-В файле `input.txt` находится фрагмент кода на языке C++. Необходимо вывести код частями, разделенными точкой с запятой `;`. Реализуйте функцию {.task_text}
+В файле `input.txt` находится фрагмент кода на языке C++. Необходимо вывести код частями, разделенными точкой с запятой `;`. Воспользуйтесь для этого `bufio.NewScanner`. В качестве функции `split` используйте  {.task_text}
 
 ```go {.task_source #golang_chapter_0210_task_0010}
 package main
@@ -267,28 +268,11 @@ import (
 )
 
 func main() {
-	file, err := os.Open("input.txt")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer func() {
-		err = file.Close()
-		if err != nil {
-			log.Fatal(err)
-		}
-	}()
-	scanner := bufio.NewScanner(file)
-	scanner.Split(ScanInstruction)
-	for scanner.Scan() {
-		line := scanner.Text()
-		fmt.Print(line)
-	}
-	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
-	}
+	// ваш код здесь 
 }
 
-func ScanInstruction(data []byte, atEOF bool) (advance int, token []byte, err error) {
+func ScanInstruction(data []byte, atEOF bool) (advance int,
+	token []byte, err error) {
 	// ваш код здесь 
 }
 ```
@@ -328,7 +312,8 @@ func main() {
 	}
 }
 
-func ScanInstruction(data []byte, atEOF bool) (advance int, token []byte, err error) {
+func ScanInstruction(data []byte, atEOF bool) (advance int,
+	token []byte, err error) {
 	if atEOF && len(data) == 0 {
 		// Возвращаем последний токен
 		return 0, nil, nil
