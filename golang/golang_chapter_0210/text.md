@@ -147,12 +147,15 @@ func main() {
 	}()
 	scanner := bufio.NewScanner(file)
 	// Читаем построчно.
-	// В случае ошибки вернутся false.
+	// В случае ошибки вернется false
+	// В случае конца файла также 
+	// вернется false. 
+	// В противном случае — true.
 	for scanner.Scan() {
 		line := scanner.Text()
 		fmt.Println(line)
 	}
-	// В случае конца файла ошибка равно nil.
+	// В случае конца файла ошибка равна nil
 	if err := scanner.Err(); err != nil {
 		log.Fatal(err)
 	}
@@ -185,7 +188,7 @@ func(data []byte, atEOF bool) (advance int, token []byte, err error)
 
 Параметры:
 * `data` — непрочитанные данные в буфере.
-* `atEOF` — `true`, если это последний кусок данных — достигнут конец файла.
+* `atEOF` — `true`, если это последняя часть данных — достигнут конец файла.
 
 Возвращаемые значения:
 * `advance` — на сколько байт продвинуться в буфере. 
@@ -232,7 +235,7 @@ func ScanComma(data []byte, atEOF bool) (advance int,
 		// Возвращаем последний токен
 		return 0, nil, nil
 	}
-	for i := 0; i < len(data); i++ {
+	for i := range len(data) {
 		if data[i] == ',' {
 			// Нашли запятую, возвращаем токен до неё
 			return i + 1, data[:i], nil
@@ -321,7 +324,7 @@ func ScanInstruction(data []byte, atEOF bool) (advance int,
 		return 0, nil, nil
 	}
 	inQuote := false // внутри кавычек
-	for i := 0; i < len(data); i++ {
+	for i := range len(data) {
 		if data[i] == '"' {
 			// Переключаем состояние кавычек
 			inQuote = !inQuote
