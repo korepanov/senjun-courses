@@ -336,3 +336,119 @@ func ScanInstruction(data []byte, atEOF bool) (advance int,
 	return len(data), data, nil
 }
 ```
+
+## Запись в файл 
+
+Бывает необходимость как писать в существующий файл, так и в новый. Рассмотрим оба варианта.  
+Запись в новый файл: 
+
+```go
+package main
+
+import (
+	"fmt"
+	"log"
+	"os"
+)
+
+func main() {
+	file, err := os.Create("pc.txt")
+	exitOnError(err)
+	defer func() {
+		err := file.Close()
+		exitOnError(err)
+	}()
+	// Запись строки
+	_, err = file.WriteString("CPU AMD Ryzen 5 7600X\n")
+	exitOnError(err)
+	// Запись байтов
+	data := []byte("Memory 16 ГБ (2x8 ГБ) DDR5-6000 МГц\n")
+	_, err = file.Write(data)
+	exitOnError(err)
+	storage := "SSD 2 ТБ M.2 NVMe"
+	os := "Ubuntu 22.04"
+	// Форматированная запись
+	fmt.Fprintf(file, "Storage: %s, OS: %s\n", storage, os)
+}
+
+func exitOnError(err error) {
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+```
+
+Запись множества мелких записей в файл с буфером и без него:
+```go
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"io"
+	"log"
+	"math/rand"
+	"os"
+	"time"
+)
+
+const measureNumber = 10000
+
+func main() {
+	file, err := os.OpenFile("sensor.txt", os.O_WRONLY, 0644)
+	exitOnError(err)
+	defer func() {
+		err := file.Close()
+		exitOnError(err)
+	}()
+	withoutBuffer(file)
+	// Чистим файл
+	err = file.Truncate(0)
+	exitOnError(err)
+	_, err = file.Seek(0, 0)
+	exitOnError(err)
+	withBuffer(file)
+}
+
+func withoutBuffer(file *os.File) {
+	// Вызываем trackTime
+	// и откладываем выполнение
+	// возвращаемой ею функции
+	defer trackTime("withoutBuffer")()
+	systemInfo(file)
+}
+
+func withBuffer(file *os.File) {
+	defer trackTime("withBuffer")()
+	writer := bufio.NewWriter(file)
+	systemInfo(writer)
+	// Пишем буферизованный результат
+	// в файл
+	err := writer.Flush()
+	exitOnError(err)
+}
+
+func systemInfo(writer io.Writer) {
+	r := rand.New(rand.NewSource(42))
+	for i := range measureNumber {
+		fmt.Fprintf(writer, "%d\tsensor value:\t%.2f\n",
+			i+1, r.Float64())
+	}
+}
+
+// Функция trackTime замеряет время работы
+// функции с именем funcName
+func trackTime(funcName string) func() {
+	start := time.Now()
+	return func() {
+		elapsed := time.Since(start)
+		fmt.Printf("%s: %v\n", funcName, elapsed)
+	}
+}
+
+func exitOnError(err error) {
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+```
