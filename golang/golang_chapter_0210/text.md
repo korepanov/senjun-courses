@@ -1,7 +1,7 @@
 # Глава 21. Работа с файлами
 
 - [ ] Работа с json и xml   
-- [ ] Базовые операции с файлами  
+- [x] Базовые операции с файлами  
 - [ ] Логирование  
 - [x] Задача на кастомный Split до точки с запятой
 
@@ -395,6 +395,8 @@ import (
 const measureNumber = 10000
 
 func main() {
+	// Открываем существующий файл с правами 0644 в режиме
+	// os.O_WRONLY — только на запись
 	file, err := os.OpenFile("sensor.txt", os.O_WRONLY, 0644)
 	exitOnError(err)
 	defer func() {
@@ -450,5 +452,150 @@ func exitOnError(err error) {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
+```
+```
+withoutBuffer: 70.401288ms
+withBuffer: 11.412507ms
+```
+
+Вывод будет немного различаться от запуска к запуску.  
+Обратите внимание, что запись в файл с буфером в несколько раз быстрее, чем без него. Это объясняется тем, что операция обращения к файлу дорогая. Гораздо выгоднее сначала накопить много мелких записей в памяти, а потом один раз запись их все в файл.
+
+
+Также рассмотрим строчку: 
+
+```go
+file, err := os.OpenFile("sensor.txt", os.O_WRONLY, 0644)
+```
+
+Здесь `0644` — [права](https://ru.wikipedia.org/wiki/Chmod) для работы с файлом на Linux.  
+
+`os.O_WRONLY` — режим открытия файла, в котором разрешена только запись. Старый текст будет удален, и запись начнется сначала.
+
+Чтобы дописать в файл, поступают таким образом: 
+
+```go
+file, err := os.OpenFile("sensor.txt", os.O_WRONLY|os.O_APPEND, 0644)
+```
+
+Подробнее про различные режимы открытия файла написано на официальном сайте Go, на странице про пакет `os`, в разделе [Constants.](https://pkg.go.dev/os#pkg-constants) 
+
+## Удаление файла, переименование, изменение прав 
+
+Чтобы удалить файл, используют функцию `os.Remove`:
+
+```go
+err := os.Remove("trash.txt")
+if err != nil {
+	log.Fatalf("Ошибка удаления: %v\n", err)
+}
+log.Println("Файл успешно удалён")
+```
+
+Чтобы переименовать файл, нужно вызвать функцию `os.Rename`:
+
+```go
+err := os.Rename("old_name.txt", "new_name.txt")
+if err != nil {
+	log.Fatalf("Ошибка переименования: %v\n", err)
+}
+log.Println("Файл успешно переименован")
+```
+
+Переместить файл в Go — это то же самое, что и переименовать его:
+
+```go
+err := os.Rename("nature.pdf", "journals/nature.pdf")
+if err != nil {
+	log.Fatalf("Ошибка перемещения: %v\n", err)
+}
+log.Println("Файл успешно перемещен")
+```
+
+Права файла изменяют с помощью `os.Chmod`:
+
+```go 
+err := os.Chmod("journals/nature.pdf", 0644)
+if err != nil {
+	log.Fatalf("Ошибка изменения прав: %v\n", err)
+}
+log.Println("Права успешно изменены!")
+```
+
+## Логирование 
+
+```go
+package main
+
+import (
+	"errors"
+	"log"
+	"os"
+	"time"
+)
+
+// Для демонстрации заданы небольшие значения
+// В реальных системах таких значений не будет
+const sizeLimit = 1 // 1B
+const timeLimit = 1 * time.Second
+
+func main() {
+	// 1. Создаём лог-файл
+	// Создать папку logs
+	err := makeDir("logs")
+	exitOnError(err)
+	file, err := os.OpenFile("logs/app.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	exitOnError(err)
+	defer file.Close()
+
+	logger := log.New(file, "[APP] ", log.Ldate|log.Ltime)
+	logger.Println("Приложение запущено")
+
+	// 2. Ротация при достижении лимита
+	info, err := file.Stat()
+	exitOnError(err)
+	if info.Size() > sizeLimit { // 1KB
+		// Перемещаем в архив
+		err = file.Close()
+		exitOnError(err)
+		err = makeDir("logs/archive")
+		exitOnError(err)
+		err = os.Rename("logs/app.log", "logs/archive/app_"+time.Now().Format("150405")+".log")
+		exitOnError(err)
+		// Создаём новый файл
+		file, err = os.OpenFile("logs/app.log", os.O_CREATE|os.O_WRONLY, 0644)
+		exitOnError(err)
+		logger = log.New(file, "[APP] ", log.Ldate|log.Ltime)
+		logger.Println("Лог-файл ротирован")
+	}
+
+	// 3. Удаляем старые архивы (старше 7 дней)
+	files, _ := os.ReadDir("logs/archive")
+	for _, f := range files {
+		info, _ := f.Info()
+		if time.Since(info.ModTime()) > timeLimit {
+			err = os.Remove("logs/archive/" + f.Name())
+			exitOnError(err)
+			logger.Printf("Удалён архив: %s", f.Name())
+		}
+	}
+
+	logger.Println("Приложение завершено")
+}
+
+func exitOnError(err error) {
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func makeDir(dir string) (err error) {
+	info, err := os.Stat(dir)
+	if errors.Is(err, os.ErrNotExist) ||
+		!info.IsDir() {
+		err = os.Mkdir(dir, 0755)
+	}
+	return
 }
 ```
