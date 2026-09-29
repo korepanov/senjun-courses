@@ -4,7 +4,7 @@
 - [x] Базовые операции с файлами  
 - [ ] Логирование  
 - [x] Задача на кастомный Split до точки с запятой
-- [ ] Рассказать подробнее про `os.Rename`, когда файл перемещают. Чтобы переместить файл честно, `os.Rename` не подойдет.
+- [x] Рассказать подробнее про `os.Rename`, когда файл перемещают. Чтобы переместить файл честно, `os.Rename` не подойдет.
 
 ## Основные пакеты для работы с файлами
 
@@ -516,6 +516,63 @@ if err != nil {
 	log.Fatalf("Ошибка перемещения: %v\n", err)
 }
 log.Println("Файл успешно перемещен")
+```
+
+Отметим, что такое перемещение файла является не совсем честным. Это работает только в рамках одной файловой системы. Если вы попытаетесь переместить файл на другой диск, то `os.Rename` вернет ошибку. 
+
+Дело в том, что `os.Rename` меняет только метаданные о файле. Функция физически не перемещает сам файл. Когда нужно это сделать, то сначала копируют файл в новое местоположение, а затем удаляют старый:
+
+```go
+package main
+
+import (
+	"errors"
+	"io"
+	"log"
+	"os"
+)
+
+func main() {
+	exitOnError(mv("dinner.txt", "lunch.txt"))
+}
+
+func mv(src string, dst string) (err error) {
+	srcFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		e := srcFile.Close()
+		if e != nil {
+			err = errors.Join(err, e)
+		}
+	}()
+	dstFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		e := dstFile.Close()
+		if e != nil {
+			err = errors.Join(err, e)
+		}
+	}()
+	_, err = io.Copy(dstFile, srcFile)
+	if err != nil {
+		return err
+	}
+	err = os.Remove(src)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func exitOnError(err error) {
+	if err != nil {
+		log.Fatal(err)
+	}
+}
 ```
 
 Права файла изменяют с помощью `os.Chmod`:
