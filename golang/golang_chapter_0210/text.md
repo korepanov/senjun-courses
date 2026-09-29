@@ -486,7 +486,7 @@ file, err := os.OpenFile("sensor.txt", os.O_WRONLY|os.O_APPEND, 0644)
 
 Подробнее про различные режимы открытия файла написано на официальном сайте Go, на странице про пакет `os`, в разделе [Constants.](https://pkg.go.dev/os#pkg-constants) 
 
-## Удаление файла, переименование, изменение прав 
+## Удаление файла, перемещение, переименование, изменение прав 
 
 Чтобы удалить файл, используют функцию `os.Remove`:
 
@@ -544,6 +544,7 @@ func mv(src string, dst string) (err error) {
 	defer func() {
 		e := srcFile.Close()
 		if e != nil {
+			// Объединяем две ошибки 
 			err = errors.Join(err, e)
 		}
 	}()
