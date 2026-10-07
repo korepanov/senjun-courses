@@ -587,13 +587,18 @@ if err != nil {
 log.Println("Права успешно изменены!")
 ```
 
-## Логирование 
+## Классическое логирование 
+
+Чтобы сделать логирование через пакет `log`, достаточно воспользоваться `log.Println`. Однако чаще всего нужно сделать предварительную настройку. Например, чтобы писать лог в файл и выводить сообщения в определенном формате. Функция `log.SetOutput` позволяет сделать вывод в файл. Функция `log.SetFlags` устанавливает флаги, определяющие 
+
+Пример демонстрирует, как сделать логи и их ротацию. Ротация логов — это процесс управления логами. В результате ротации логов старые записи архивируются или удаляются. Для новых данных создаются свежие пустые файлы.
 
 ```go
 package main
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"time"
@@ -602,7 +607,7 @@ import (
 // Для демонстрации заданы небольшие значения
 // В реальных системах таких значений не будет
 const sizeLimit = 1 // 1B
-const timeLimit = 1 * time.Second
+const timeLimit = 5 * time.Second
 
 func main() {
 	// 1. Создаём лог-файл
@@ -613,8 +618,11 @@ func main() {
 	exitOnError(err)
 	defer file.Close()
 
-	logger := log.New(file, "[APP] ", log.Ldate|log.Ltime)
-	logger.Println("Приложение запущено")
+	// Настройка лога
+	log.SetOutput(file)
+	log.SetFlags(log.Ldate | log.Ltime)
+	log.SetPrefix("[APP] ")
+	log.Println("Приложение запущено")
 
 	// 2. Ротация при достижении лимита
 	info, err := file.Stat()
@@ -625,27 +633,28 @@ func main() {
 		exitOnError(err)
 		err = makeDir("logs/archive")
 		exitOnError(err)
-		err = os.Rename("logs/app.log", "logs/archive/app_"+time.Now().Format("150405")+".log")
+		err = os.Rename("logs/app.log", fmt.Sprintf("logs/archive/app_%s.log",
+			time.Now().Format("2006-01-02T15-04-05")))
 		exitOnError(err)
 		// Создаём новый файл
 		file, err = os.OpenFile("logs/app.log", os.O_CREATE|os.O_WRONLY, 0644)
 		exitOnError(err)
-		logger = log.New(file, "[APP] ", log.Ldate|log.Ltime)
-		logger.Println("Лог-файл ротирован")
+		log.SetOutput(file)
+		log.Println("Лог-файл ротирован")
 	}
 
-	// 3. Удаляем старые архивы (старше 7 дней)
+	// 3. Удаляем старые архивы (старше timeLimit)
 	files, _ := os.ReadDir("logs/archive")
 	for _, f := range files {
 		info, _ := f.Info()
 		if time.Since(info.ModTime()) > timeLimit {
 			err = os.Remove("logs/archive/" + f.Name())
 			exitOnError(err)
-			logger.Printf("Удалён архив: %s", f.Name())
+			log.Printf("Удалён архив: %s", f.Name())
 		}
 	}
 
-	logger.Println("Приложение завершено")
+	log.Println("Приложение завершено")
 }
 
 func exitOnError(err error) {
